@@ -2,6 +2,7 @@ package org.o1_study.utilities;
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.ForumChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.entities.channel.forums.ForumTag;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.o1_study.Main;
@@ -15,7 +16,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 public class LeetCodeHandle
@@ -32,20 +32,7 @@ public class LeetCodeHandle
 
 		try
 		{
-			URL url = new URI("https://leetcode.com/graphql").toURL();
-			conn = (HttpURLConnection) url.openConnection();
-
-			//設定請求方法與標頭
-			conn.setRequestMethod("POST");
-			conn.setRequestProperty("Content-Type", "application/json");
-			conn.setDoOutput(true);
-
-			//寫入請求
-			try (OutputStream os = conn.getOutputStream())
-			{
-				byte[] input = "{\"query\": \"query {activeDailyCodingChallengeQuestion {link question {title questionId difficulty}}}\"}".getBytes(StandardCharsets.UTF_8);
-				os.write(input, 0, input.length);
-			}
+			conn = createConnection();
 		}
 		catch (URISyntaxException | IOException e)
 		{
@@ -82,28 +69,64 @@ public class LeetCodeHandle
 			return;
 		}
 
-		QuestionData response = JsonHandle.instance.readResponse(responseString.toString());
-		createPost(response.questionId + ". " + response.title, "https://leetcode.com/" + response.link, response.difficulty);
-	}
-
-	private void createPost(String title, String link, String difficulty)
-	{
 		Guild guild = Main.jda.getGuildById(Constants.GUILD_ID);
 		if (guild == null) //獲取不到群組
+		{
+			logger.error("Can't get guild {}", Constants.GUILD_ID);
 			return;
+		}
 
 		ForumChannel channel = guild.getForumChannelById(Constants.LEET_CODE_CHANNEL_ID);
 		if (channel == null) //獲取不到頻道
+		{
+			logger.error("Can't get channel {}", Constants.LEET_CODE_CHANNEL_ID);
 			return;
+		}
 
-		ForumTag tag = switch (difficulty) //難易度
+		archivePost(channel);
+		createPost(channel, JsonHandle.instance.readResponse(responseString.toString()));
+	}
+
+	private HttpURLConnection createConnection() throws URISyntaxException, IOException
+	{
+		HttpURLConnection conn = (HttpURLConnection) new URI("https://leetcode.com/graphql").toURL().openConnection();
+
+		//設定請求方法與標頭
+		conn.setRequestMethod("POST");
+		conn.setRequestProperty("Content-Type", "application/json");
+		conn.setDoOutput(true);
+
+		//寫入請求
+		try (OutputStream os = conn.getOutputStream())
+		{
+			byte[] input = "{\"query\": \"query {activeDailyCodingChallengeQuestion {link question {title questionId difficulty}}}\"}".getBytes(StandardCharsets.UTF_8);
+			os.write(input, 0, input.length);
+		}
+
+		return conn;
+	}
+
+	private void archivePost(ForumChannel channel)
+	{
+		for (ThreadChannel thread : channel.getThreadChannels())
+			if (!thread.isArchived())
+				thread.getManager().setArchived(true).queue();
+	}
+
+	private void createPost(ForumChannel channel, QuestionData response)
+	{
+		String title = response.questionId + ". " + response.title + "https://leetcode.com" + response.link;
+
+		ForumTag tag = switch (response.difficulty) //難易度
 		{
 			case "Easy" -> channel.getAvailableTagById(Constants.EASY_TAG_ID);
 			case "Medium" -> channel.getAvailableTagById(Constants.MEDIUM_TAG_ID);
 			default -> channel.getAvailableTagById(Constants.HARD_TAG_ID); //Hard
 		};
 
-		channel.createForumPost(title, MessageCreateData.fromContent(link)) //新增貼文
+		logger.info("Created post {}", title);
+
+		channel.createForumPost(title, MessageCreateData.fromContent(response.link)) //新增貼文
 				.setTags(tag) //設定tag
 				.queue();
 	}

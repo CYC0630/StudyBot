@@ -10,9 +10,6 @@ public class CommandEvent extends ListenerAdapter
 	public void onSlashCommandInteraction(@NonNull SlashCommandInteractionEvent event)
 	{
 		if ("shutdown".equals(event.getName()))
-		{
-			event.reply("關閉中").setEphemeral(true).queue();
-			event.getJDA().shutdown();
-		}
+			event.reply("關閉中").setEphemeral(true).queue(hook -> event.getJDA().shutdown());
 	}
 }

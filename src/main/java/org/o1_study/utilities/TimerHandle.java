@@ -13,24 +13,18 @@ public class TimerHandle
 	public static TimerHandle instance = new TimerHandle();
 
 	private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-	private final ScheduledFuture<?> everyHour;
-	private int nowHour;
+	private ScheduledFuture<?> everyHour;
 
-	private TimerHandle()
+	private TimerHandle() {}
+
+	public void startTimer()
 	{
-		LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC+8")); //現在的時間
-		nowHour = now.getHour();
-		LocalDateTime startTimer = now.withHour(nowHour).withMinute(0).withSecond(0).plusHours(1); //目標時間
+		LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC")); //現在的時間
+		LocalDateTime eight = now.withHour(8).withMinute(0).withSecond(1); //目標時間
+		LocalDateTime startTimer = now.isAfter(eight) ? eight.plusDays(1) : eight;
 
-		everyHour = executorService.scheduleAtFixedRate(() -> //每小時執行一次
-		{
-			nowHour++;
-
-			if (nowHour == 9) //雖然是8點時更新 但9點才po吧
-				LeetCodeHandle.instance.newDay();
-			else if (nowHour == 24)
-				nowHour = 0;
-		}, Duration.between(now, startTimer).toSeconds(), 60 * 60, TimeUnit.SECONDS);
+		everyHour = executorService.scheduleAtFixedRate(() -> LeetCodeHandle.instance.newDay(),
+				Duration.between(now, startTimer).toSeconds(), 60 * 60, TimeUnit.SECONDS);
 	}
 
 	public void stopTimer()
