@@ -24,7 +24,7 @@ public class TimerHandle
 		LocalDateTime startTimer = now.isAfter(eight) ? eight.plusDays(1) : eight;
 
 		everyHour = executorService.scheduleAtFixedRate(() -> LeetCodeHandle.instance.newDay(),
-				Duration.between(now, startTimer).toSeconds(), 60 * 60, TimeUnit.SECONDS);
+				Duration.between(now, startTimer).toSeconds(), 60 * 60 * 24, TimeUnit.SECONDS);
 	}
 
 	public void stopTimer()

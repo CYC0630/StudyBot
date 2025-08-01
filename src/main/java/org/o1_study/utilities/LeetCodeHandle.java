@@ -24,7 +24,12 @@ public class LeetCodeHandle
 
 	public static LeetCodeHandle instance = new LeetCodeHandle();
 
-	private LeetCodeHandle() {}
+	private final byte[] requestInput;
+
+	private LeetCodeHandle()
+	{
+		requestInput = "{\"query\": \"query {activeDailyCodingChallengeQuestion {link question {title questionId difficulty}}}\"}".getBytes(StandardCharsets.UTF_8);
+	}
 
 	public void newDay()
 	{
@@ -99,8 +104,7 @@ public class LeetCodeHandle
 		//寫入請求
 		try (OutputStream os = conn.getOutputStream())
 		{
-			byte[] input = "{\"query\": \"query {activeDailyCodingChallengeQuestion {link question {title questionId difficulty}}}\"}".getBytes(StandardCharsets.UTF_8);
-			os.write(input, 0, input.length);
+			os.write(requestInput, 0, requestInput.length);
 		}
 
 		return conn;
